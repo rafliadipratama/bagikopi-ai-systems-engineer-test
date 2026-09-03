@@ -4,6 +4,16 @@ Dokumen ini berisi solusi lengkap, skrip pembersihan data, pengolahan database, 
 
 ---
 
+## 🌐 Live Executive Web Dashboard (Online)
+
+Dashboard Web Interaktif dengan tema resmi **Bagi Kopi Blue** (`#0076F9`) dan logo resmi PT Bagi Kopi Indonesia dapat diakses secara langsung melalui link berikut:
+
+👉 **[https://rafliadipratama.github.io/bagikopi-ai-systems-engineer-test/](https://rafliadipratama.github.io/bagikopi-ai-systems-engineer-test/)**
+
+*(Fitur: Executive KPI Cards, Chart.js Visualizations, SQL Queries & Answers, Live Data Explorer Table dengan Search & Filter, serta Log Verifikasi AI Bagian 3).*
+
+---
+
 ## 📋 Ringkasan Eksekutif
 
 | Indikator / Aspek | Nilai / Keterangan |
@@ -14,7 +24,7 @@ Dokumen ini berisi solusi lengkap, skrip pembersihan data, pengolahan database, 
 | **Jumlah Transaksi Berhasil (`PAID`)** | 192 transaksi (157 Retail, 35 Roastery) |
 | **Jumlah Transaksi Dibatalkan (`VOID`)** | 13 transaksi (semua entitas Retail) |
 | **Periode Data Transaksi** | 01 September 2026 s.d. 14 September 2026 |
-| **Database yang Penggunaannya Digunakan** | SQLite 3 (`database/bagikopi.db`) |
+| **Database yang Digunakan** | SQLite 3 (`database/bagikopi.db`) |
 
 ---
 
@@ -23,9 +33,13 @@ Dokumen ini berisi solusi lengkap, skrip pembersihan data, pengolahan database, 
 ```text
 bagikopi-test/
 ├── README.md                           # Laporan Utama & Dokumentasi Lengkap
+├── index.html                          # Dashboard Web Interaktif (Bagi Kopi Blue #0076F9)
+├── assets/
+│   └── logo_pt_bagi_kopi.webp          # Logo Resmi PT Bagi Kopi Indonesia
 ├── data/
 │   ├── bk_transactions_raw.csv         # Dataset mentah awal
-│   └── bk_transactions_clean.csv       # Dataset hasil pembersihan (Cleaned CSV)
+│   ├── bk_transactions_clean.csv       # Dataset hasil pembersihan (Cleaned CSV)
+│   └── transactions_clean.json         # Dataset format JSON untuk Web Dashboard
 ├── database/
 │   └── bagikopi.db                     # Database SQLite berisi tabel transactions
 ├── scripts/
@@ -196,7 +210,7 @@ python3 scripts/clean_and_load.py
 python3 scripts/run_queries.py
 ```
 
-### 3. Eksekusi via SQLite CLI (Opsional)
+### 3. Jalankan Dashboard Web Secara Lokal
 ```bash
-sqlite3 database/bagikopi.db < sql/business_questions.sql
+open index.html
 ```
