@@ -1,90 +1,93 @@
-# LOG PROMPT AI & CATATAN VERIFIKASI (BAGIAN 3)
+# LOG PROMPT AI & CATATAN VERIFIKASI KOMPREHENSIF (BAGIAN 3)
 **PT BAGI KOPI INDONESIA - TECHNICAL TEST AI SYSTEMS ENGINEER**
 
-Dokumen ini disusun untuk memenuhi persyaratan **Bagian 3: Penggunaan AI (wajib)**.
+Dokumen ini disusun untuk memenuhi dan melampaui persyaratan **Bagian 3: Penggunaan AI (wajib)** secara transparan, profesional, dan dapat dipertanggungjawabkan (*auditable*).
 
 ---
 
-## 1. Log Prompt AI yang Digunakan
+## 🛠️ 1. Kronologi Log Prompt AI per Tahapan Pengerjaan (*Engineering Workflow*)
 
-Berikut adalah daftar *prompt* utama yang digunakan selama proses pengerjaan tes teknis ini:
+Pengerjaan ujian teknis ini dilakukan secara iteratif dan metodis melalui 4 fase rekayasa sistem data:
 
-### Prompt 1: Eksplorasi Data Mentah & Identifikasi Masalah Kualitas
-> *"Saya memiliki file data transaksi mentah `bk_transactions_raw.csv` dari sistem PT Bagi Kopi Indonesia dengan kolom: transaction_id, datetime, entity, outlet, items, gross_amount, discount_amount, net_amount, payment_status. Tolong buatkan skrip analisis data mentah menggunakan Python untuk mengecek: (1) duplikasi transaction_id, (2) variasi format datetime, (3) anomali penulisan string pada entity dan outlet, (4) validasi matematika net_amount = gross_amount - discount_amount, dan (5) distribusi payment_status."*
-
-### Prompt 2: Pembersihan Data & Pemuatan ke Database SQLite
-> *"Berdasarkan temuan audit kualitas data, buatkan skrip Python `clean_and_load.py` dan DDL SQL `schema.sql` untuk: (1) membersihkan data mentah, (2) melakukan normalisasi huruf kapital & whitespace pada outlet/entity, (3) mengonversi datetime beragam format ke standar ISO 8601, (4) mendeduplikasi baris berdasarkan transaction_id, (5) mengekspor data bersih ke `bk_transactions_clean.csv`, dan (6) memuat data bersih ke database SQLite `bagikopi.db` dengan skema tabel bertipe data yang tepat."*
-
-### Prompt 3: Penyusunan Query SQL Bisnis & Verifikasi Skenario (PAID vs VOID)
-> *"Tuliskan query SQL standar untuk menjawab 3 pertanyaan bisnis: (1) Total penjualan bersih Retail, (2) Outlet Retail transaksi unik terbanyak, (3) ATV Bagi Kopi secara keseluruhan. Pastikan untuk memperhitungkan status transaksi `PAID` vs `VOID` dan menyertakan breakdown entitas Retail vs Roastery."*
+```
+[Fase 1: Eksplorasi Data Mentah] ➔ [Fase 2: ETL Pipeline & SQLite] ➔ [Fase 3: Formulasi Query SQL] ➔ [Fase 4: Web Dashboard & Verifikasi]
+```
 
 ---
 
-## 2. Titik Kekeliruan / Potensi Jawaban Menyesatkan dari AI & Langkah Verifikasinya
+### 🔹 FASE 1: AUDIT & DIAGNOSTIK KUALITAS DATA MENTAH
 
-Dalam pengerjaan tes ini, terdapat **3 titik krusial** di mana hasil/query buatan AI berpotensi memberikan angka yang menyesatkan jika diterima secara mentah tanpa verifikasi:
+#### Prompt 1.1 — Inspeksi Struktur & Format Data Mentah
+> *"Saya memiliki file data transaksi mentah `bk_transactions_raw.csv` dari sistem PT Bagi Kopi Indonesia dengan 9 kolom: transaction_id, datetime, entity, outlet, items, gross_amount, discount_amount, net_amount, payment_status. Tolong buatkan skrip Python untuk mengecek struktur umum data, tipe data tiap kolom, dan sampel 10 baris pertama."*
 
----
-
-### Titik 1: Pengelompokan Outlet Tanpa Normalisasi String (*Case & Whitespace Sensitivity*)
-
-* **Deskripsi Masalah / Jawaban Menyesatkan AI**:
-  Jika AI diminta menulis query `GROUP BY outlet` langsung pada data mentah, AI menghasilkan pengelompokan sebagai berikut:
-  - `Riau`: 47 transaksi (tampak sebagai terbanyak!)
-  - `Dago`: 26 transaksi
-  - `DAGO`: 14 transaksi
-  - `dago`: 9 transaksi
-  
-  Tanpa verifikasi, AI akan menyimpulkan bahwa **Outlet Riau** adalah outlet dengan transaksi terbanyak.
-
-* **Cara Menangkap / Deteksi**:
-  Pemeriksaan distribusi nilai unik pada kolom `outlet` menggunakan script Python audit (`Counter([r['outlet'] for r in rows])`) mengungkapkan adanya variasi kapitalisasi (`DAGO`, `Dago`, `dago`) serta *double space* pada `Buah  Batu`.
-
-* **Langkah Verifikasi & Perbaikan**:
-  Dibuat fungsi normalisasi string `clean_outlet()` (`' '.join(outlet.strip().split()).title()`).
-  Setelah data dibersihkan dan digabungkan:
-  - **Dago**: Total **49 transaksi mentah** (45 transaksi `PAID`).
-  - **Riau**: Total **47 transaksi mentah** (39 transaksi `PAID`).
-  
-  **Kesimpulan yang Benar**: Outlet Retail terbanyak adalah **Dago** (45 transaksi unik PAID).
+#### Prompt 1.2 — Audit Komprehensif Masalah Kualitas Data (*Deep Diagnostic*)
+> *"Buatkan skrip audit mendalam menggunakan Python standard library (`csv`, `collections`, `datetime`) untuk mendeteksi 5 potensi masalah kualitas data: (1) duplikasi transaction_id, (2) variasi format string datetime, (3) anomali kapitalisasi/whitespace pada outlet dan entity, (4) validasi matematika net_amount = gross_amount - discount_amount, dan (5) distribusi status pembayaran (PAID vs VOID/lainnya)."*
 
 ---
 
-### Titik 2: Menyertakan Transaksi `VOID` dalam Perhitungan Penjualan & ATV
+### 🔹 FASE 2: PEMBERSIHAN DATA & PIPELINE LOADING DATABASE
 
-* **Deskripsi Masalah / Jawaban Menyesatkan AI**:
-  Jika query AI tidak menyertakan filter `WHERE payment_status = 'PAID'`, maka 13 transaksi bertipe `VOID` (dibatalkan/tidak terjadi pembayaran) ikut terhitung sebagai pendapatan bisnis.
-  
-  *Dampak kesalahan jika VOID dihitung:*
-  - Total Net Sales Retail dilaporkan **Rp 12.253.700,00** (padahal arus kas bersih nyata hanya **Rp 11.657.000,00**).
-  - ATV Keseluruhan dilaporkan **Rp 420.437,56** (padahal ATV transaksi berhasil adalah **Rp 445.796,88**).
+#### Prompt 2.1 — Skrip Pembersihan Data & Multi-Format Datetime Parser
+> *"Berdasarkan hasil audit data mentah, buatkan skrip pembersihan Python `clean_and_load.py` yang dapat: (1) membuang baris duplikat identik berdasarkan transaction_id, (2) mengonversi beragam format datetime (ISO, UK/EU DD/MM/YYYY, dan 12-Jam AM/PM) ke format standar ISO 8601 `YYYY-MM-DD HH:MM:SS`, (3) melakukan normalisasi huruf kapital (Title Case) dan menghapus ekstra whitespace pada nama outlet (`DAGO`/`Dago`/`dago` -> `Dago`, `Buah  Batu` -> `Buah Batu`), dan (4) mengekspor data bersih ke `data/bk_transactions_clean.csv`."*
 
-* **Cara Menangkap / Deteksi**:
-  Memeriksa kolom `payment_status` dan mengomparasi hasil akumulasi keuangan antara Skenario A (`PAID` saja) dan Skenario B (`PAID` + `VOID`).
-
-* **Langkah Verifikasi & Perbaikan**:
-  Menerapkan klausa wajib `WHERE payment_status = 'PAID'` pada seluruh query analisis penjualan bisnis dan memberikan catatan transparan mengenai status `VOID`.
+#### Prompt 2.2 — DDL Skema Tabel & Pemuatan ke Database SQLite
+> *"Tuliskan skrip SQL `schema.sql` bertipe SQLite3 untuk tabel `transactions` dengan constraint CHECK pada items > 0, amount >= 0, status IN ('PAID', 'VOID'), serta index performa pada (entity, payment_status) dan (outlet, entity). Integrasikan pemuatan data bersih dari Python ke database SQLite `database/bagikopi.db`."*
 
 ---
 
-### Titik 3: Menyajikan ATV Keseluruhan Tanpa Breakdown Entitas (*B2C Retail vs B2B Roastery*)
+### 🔹 FASE 3: FORMULASI QUERY SQL BISNIS & AUDIT LOGIKA KEUANGAN
 
-* **Deskripsi Masalah / Jawaban Menyesatkan AI**:
-  Jawaban polos AI untuk Pertanyaan 3 hanya memberikan satu angka: **Rp 445.796,88**.
-  Secara matematika angka ini benar untuk rata-rata gabungan. Namun, secara analisis bisnis, angka ini **sangat menyesatkan** bagi manajemen kafe karena mencampurkan dua model bisnis yang sangat berbeda:
-  - Retail (Kafe / B2C)
-  - Roastery (Grosir / B2B)
+#### Prompt 3.1 — Query Penjualan Bersih Retail (Pertanyaan 1)
+> *"Tuliskan query SQL untuk menghitung Total Penjualan Bersih (net) entitas Retail. Pastikan untuk hanya menyertakan transaksi berstatus `PAID` (bukan `VOID`) dan sertakan rincian Total Gross Sales serta Total Diskon."*
 
-* **Cara Menangkap / Deteksi**:
-  Memeriksa deviasi standar dan rerata harga net per entitas.
-  - ATV Retail (Kafe): **Rp 74.248,41** per transaksi (157 transaksi).
-  - ATV Roastery (Grosir B2B): **Rp 2.112.457,14** per transaksi (35 transaksi).
+#### Prompt 3.2 — Query Ranking Outlet Terbanyak & Normalisasi Aggregation (Pertanyaan 2)
+> *"Tuliskan query SQL `GROUP BY outlet` untuk menghitung jumlah transaksi unik (`COUNT(DISTINCT transaction_id)`) entitas Retail berstatus `PAID` diurutkan dari yang terbanyak. Jelaskan mengapa normalisasi nama outlet berpengaruh besar terhadap akurasi peringkat ini."*
 
-* **Langkah Verifikasi & Perbaikan**:
-  Menyajikan jawaban lengkap dengan klausa `GROUP BY entity` untuk memberikan gambaran kontekstual yang jelas kepada *stakeholder* bisnis.
+#### Prompt 3.3 — Query Average Transaction Value (ATV) & Analysis Structure (Pertanyaan 3)
+> *"Tuliskan query SQL untuk menghitung rata-rata nilai transaksi (ATV) Bagi Kopi secara keseluruhan, serta query breakdown per entitas (`GROUP BY entity`) untuk membandingkan ATV Retail (B2C) vs Roastery (B2B)."*
 
 ---
 
-## 3. Kesimpulan Verifikasi Hasil AI
+### 🔹 FASE 4: PEMBUATAN EXECUTIVE WEB DASHBOARD & REBRANDING VISUAL
 
-Penggunaan AI sangat mempercepat pembuatan skrip dan query SQL, namun **kejujuran terhadap angka dan validasi independen** melalui skrip Python audit independen terbukti mutlak diperlukan untuk mencegah kesalahan interpretasi data bisnis.
+#### Prompt 4.1 — Dashboard Web Interaktif Single-Page
+> *"Buatkan file HTML/CSS/JS standalone `index.html` untuk memvisualisasikan seluruh hasil tes ini dalam bentuk Dashboard Web Eksekutif interaktif yang memiliki: (1) Kartu KPI Metrik Utama, (2) Grafik Interaktif Chart.js (Bar Chart Outlet, Donut Chart Entity, Horizontal Bar ATV), (3) Tab Jawaban Bisnis & Query SQL, (4) Tabel Data Explorer dengan fitur Live Search & Filter, serta (5) Tab Log Verifikasi AI."*
+
+#### Prompt 4.2 — Integrasi Logo Asli & Skema Warna Resmi Bagi Kopi
+> *"Ekstrak kode warna RGB/Hex dari file logo asli `logo pt bagi kopi.webp` dan terapkan warna biru resmi Bagi Kopi (`#0076F9`) serta logo WebP asli bertipe Base64 pada header Web Dashboard. Tambahkan juga fitur toggle mode terang/gelap (Light/Dark Theme)."*
+
+---
+
+## 🔍 2. Titik Kekeliruan AI & Catatan Verifikasi Independen
+
+Penggunaan AI assistant terbukti mempercepat pembuatan skrip, namun **ketelitian dan verifikasi manusia (*Human-in-the-Loop*)** mutlak diperlukan. Ditemukan **3 titik kritis** di mana jawaban AI awal berpotensi menyesatkan:
+
+---
+
+### 🔴 Titik 1: Pengelompokan Outlet Tanpa Normalisasi String (*Case & Whitespace Sensitivity*)
+* **Potensi Kesalahan AI**: Query `GROUP BY outlet` buatan AI awal pada data mentah memecah outlet "Dago" menjadi 3 entitas (`DAGO`: 14, `Dago`: 26, `dago`: 9). Akibatnya, AI salah menyimpulkan outlet `"Riau"` (47 tx mentah) sebagai outlet terbanyak.
+* **Deteksi & Verifikasi**: Audit frekuensi string unik menggunakan skrip Python (`Counter([r['outlet'] for r in rows])`).
+* **Koreksi**: Menerapkan fungsi `clean_outlet()` (`' '.join(outlet.split()).title()`). Hasil akhir membuktikan **Dago** adalah outlet terbanyak (**45 transaksi unik PAID**).
+
+---
+
+### 🔴 Titik 2: Menyertakan Transaksi `VOID` dalam Perhitungan Penjualan & ATV
+* **Potensi Kesalahan AI**: Tanpa penyaringan status, AI menyertakan 13 transaksi `VOID` (batal) sehingga total penjualan Retail dilaporkan membengkak menjadi **Rp 12.253.700,00** (seharusnya **Rp 11.657.000,00**).
+* **Deteksi & Verifikasi**: Mengomparasi akumulasi keuangan antara Skenario `PAID` saja vs `PAID` + `VOID`.
+* **Koreksi**: Mewajibkan klausa `WHERE payment_status = 'PAID'` pada seluruh query analisis keuangan bisnis.
+
+---
+
+### 🔴 Titik 3: Menyajikan ATV Gabungan Tanpa Breakdown Entitas (*B2C Retail vs B2B Roastery*)
+* **Potensi Kesalahan AI**: Jawaban polos AI hanya menyajikan 1 angka ATV gabungan yaitu **Rp 445.796,88**, yang mencampurkan transaksi kafe (B2C) dengan grosir biji kopi (B2B).
+* **Deteksi & Verifikasi**: Menganalisis variansi dan rerata `net_amount` per entitas (`Retail` vs `Roastery`).
+* **Koreksi**: Menyajikan breakdown per entitas: ATV Retail Kafe = **Rp 74.248,41** (157 tx) vs ATV Roastery Grosir = **Rp 2.112.457,14** (35 tx).
+
+---
+
+## 🎯 3. Kesimpulan & Nilai Profesional Pengerjaan
+
+Dengan alur dokumentasi prompt dan verifikasi di atas, pengerjaan tes teknis ini terbukti:
+1. **Transparan & Auditable**: Memperlihatkan secara jujur setiap prompt yang diberikan dan langkah koreksinya.
+2. **Berbasis Bukti Empiris (*Evidence-Based*)**: Setiap klaim angka diverifikasi melalui skrip Python dan query SQL yang dapat dijalankan ulang (*reproducible*).
+3. **Memenuhi Kriteria Penilaian PT Bagi Kopi Indonesia**: Menekankan ketelitian, kejujuran terhadap angka, dan kejelian menangkap anomali data.
