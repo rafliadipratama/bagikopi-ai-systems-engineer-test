@@ -14,6 +14,17 @@ Dashboard Web Interaktif dengan tema resmi **Bagi Kopi Blue** (`#0076F9`) dan lo
 
 ---
 
+## ⚙️ Automated Testing & CI/CD Pipeline
+
+Repositori ini dilengkapi dengan **Automated Unit Testing Suite** (`tests/test_pipeline.py`) dan **GitHub Actions CI/CD Pipeline** (`.github/workflows/ci.yml`) yang menjalankan verifikasi data dan pengujian otomatis pada setiap *commit*:
+
+```bash
+# Jalankan Unit Testing Suite (7 Automated Tests)
+python3 -m unittest tests/test_pipeline.py
+```
+
+---
+
 ## 📋 Ringkasan Eksekutif
 
 | Indikator / Aspek | Nilai / Keterangan |
@@ -24,7 +35,7 @@ Dashboard Web Interaktif dengan tema resmi **Bagi Kopi Blue** (`#0076F9`) dan lo
 | **Jumlah Transaksi Berhasil (`PAID`)** | 192 transaksi (157 Retail, 35 Roastery) |
 | **Jumlah Transaksi Dibatalkan (`VOID`)** | 13 transaksi (semua entitas Retail) |
 | **Periode Data Transaksi** | 01 September 2026 s.d. 14 September 2026 |
-| **Database yang Digunakan** | SQLite 3 (`database/bagikopi.db`) |
+| **Database yang Digunakan** | SQLite 3 (`database/bagikopi.db`) & DuckDB (`sql/duckdb_queries.sql`) |
 
 ---
 
@@ -34,6 +45,8 @@ Dashboard Web Interaktif dengan tema resmi **Bagi Kopi Blue** (`#0076F9`) dan lo
 bagikopi-test/
 ├── README.md                           # Laporan Utama & Dokumentasi Lengkap
 ├── index.html                          # Dashboard Web Interaktif (Bagi Kopi Blue #0076F9)
+├── .github/
+│   └── workflows/ci.yml                # GitHub Actions CI/CD Pipeline Workflow
 ├── assets/
 │   └── logo_pt_bagi_kopi.webp          # Logo Resmi PT Bagi Kopi Indonesia
 ├── data/
@@ -45,10 +58,13 @@ bagikopi-test/
 ├── scripts/
 │   ├── clean_and_load.py               # Skrip Python pembersihan data & loading ke DB
 │   └── run_queries.py                  # Skrip Python eksekusi query bisnis & formatting
+├── tests/
+│   └── test_pipeline.py                # Automated Unit & Integration Tests Suite
 ├── sql/
 │   ├── schema.sql                      # DDL Schema tabel database SQLite
 │   ├── clean_and_load.sql              # Dokumentasi alur pembersihan & pemuatan SQL
-│   └── business_questions.sql          # Query SQL resmi untuk 3 Pertanyaan Bisnis
+│   ├── business_questions.sql          # Query SQL resmi untuk 3 Pertanyaan Bisnis
+│   └── duckdb_queries.sql              # Query OLAP DuckDB (Direct CSV Analytics)
 └── logs/
     └── ai_prompt_and_verification_log.md # Log Prompt AI & Catatan Verifikasi (Bagian 3)
 ```
@@ -198,19 +214,16 @@ Dokumen lengkap log AI dan langkah verifikasi tersedia di [`logs/ai_prompt_and_v
 
 ## 🚀 Cara Menjalankan Pipeline (*Reproducibility*)
 
-Untuk menjalankan seluruh pipeline pembersihan data, pembuatan database, dan pencetakan laporan bisnis:
-
-### 1. Jalankan Skrip Cleaning & Loading Database
 ```bash
+# 1. Cleaning & Loading Database
 python3 scripts/clean_and_load.py
-```
 
-### 2. Jalankan Skrip Eksekusi Query Bisnis
-```bash
+# 2. Query Runner
 python3 scripts/run_queries.py
-```
 
-### 3. Jalankan Dashboard Web Secara Lokal
-```bash
+# 3. Run Unit Tests (7 Automated Tests)
+python3 -m unittest tests/test_pipeline.py
+
+# 4. Open Web Dashboard Locally
 open index.html
 ```

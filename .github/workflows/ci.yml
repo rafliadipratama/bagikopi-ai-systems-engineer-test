@@ -1,0 +1,32 @@
+name: Bagi Kopi AI Systems Engineer CI Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test-and-validate:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+
+    - name: Run Data Cleaning & Database Loading Pipeline
+      run: |
+        python3 scripts/clean_and_load.py
+
+    - name: Run Business SQL Queries Runner
+      run: |
+        python3 scripts/run_queries.py
+
+    - name: Execute Automated Unit Tests Suite
+      run: |
+        python3 -m unittest tests/test_pipeline.py
